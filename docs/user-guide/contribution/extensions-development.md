@@ -2,7 +2,7 @@
 layout: docwithnav
 assignees:
 - vbabak
-title: Extensions (Plugins and Actions) Development Guide
+title: Extensions Development Guide - Rules and Plugins
 
 ---
 
@@ -11,15 +11,58 @@ title: Extensions (Plugins and Actions) Development Guide
 
 #### Introduction
 
-**Thingsboard extensions** are additional modules that could be developed and fitted to the platform to provide new functionality required by your needs.
-As an example, you can easily add your custom **extension** that could send messages from **Thingsboard** to any other external system, additionally applying your specific business logic calculations before send.
-Or you can add **extension** that do specific stream analytics on device *telemetry* stream data and pushes result back to **Thingsboard** instance.
+**Thingsboard extensions** are additional modules that could be developed and added to the platform to provide new functionality to cover your use cases.
+As an example, you can easily add your custom **extension** that could send messages from **Thingsboard** to any other external system, 
+additionally applying your specific business logic calculations before send.
+ 
+#### Step 0. Read the docs
+  
+We recommend you to attentively review the [**Rule Engine**](/docs/user-guide/rule-engine/) documentation before you proceed. 
+A lot of examples in this guide will be based on the existing rule engine components (extensions).
+ 
+#### Step 1. Choose Extension type
 
-Here is high level design flow of **Thingsboard extensions**:
+We assume you already understand the difference between filter, processor, action and plugin.
+If you want to add new plugin, most likely you will also need to add one or more actions to it.
 
-![image](/images/user-guide/contribution/extension-design.png)
+**Example 1**: To add a plugin that sends and SMS using some external services, you will need to add two sibling extensions: SMS Action and Plugin.
+SMS Plugin will contain logic for communication with external service. 
+SMS Action will contain logic how to map telemetry data and device attributes to the actual message and phone number.
 
-#### Maven module
+**Example 2**: To add a plugin that aggregates incoming data within certain time-window you need to develop the Plugin, 
+but you are able to reuse existing [Telemetry action](/docs/reference/actions/telemetry-plugin-action/) to forward telemetry data to your plugin.
+ 
+#### Step 2. Choose Stateful vs Stateless extensions
+ 
+Extensions that are running inside Thingsboard server may be stateful or stateless. 
+There is no differences in the interface itself, but the complexity of implementation may be very different. 
+
+The most important part to understand is about clustering mode. 
+Each Thingsboard service launches separate instance of the same plugin and rule. 
+If one service goes down due to hardware or network failure there are multiple options how to react. 
+But in general case you need the system to be working constantly and without any affect on the ned user.
+  
+**Example 1**: SMS plugin is stateless. You just receive and send SMS. 
+If you decide to add the SMS de-duplication logic it is still stateless, but the duplication check will consume some resources (light-weight transaction in Cassandra DB, etc.)
+ 
+**Example 2**: Data aggregation for multiple devices is stateful. And also required cluster communication between plugin instances.
+For example, you can aggregate data on each Thingsboard node separately and periodically send this data to a single node in the cluster to do total aggregation.
+But how to avoid data losses when one of the nodes died? There are multiple options and you need to figure out what is the best option in your case.
+
+#### Step 3. Design API
+
+This step is applicable for plugins. Plugin is able to provide following APIs:
+
+ - REST API - to receive API calls from external systems.
+ - WebSocket API - to receive API calls from external systems.
+ - RPC API - to exchange messages between multiple instances of the same Plugin in the cluster mode.
+ 
+Please review Plugin [**interface**](https://github.com/thingsboard/thingsboard/blob/master/extensions-api/src/main/java/org/thingsboard/server/extensions/api/plugins/Plugin.java) and implementations for more details.
+We recommend to design API calls first and then proceed to implementation.
+
+#### Step 4. Add maven module
+
+
 
 Custom extensions are separate *maven* modules in **Thingsboard** [github repository](https://github.com/thingsboard/thingsboard/tree/master/extensions).
 New *maven* module must be created inside *extensions* module to add new extension.
@@ -30,6 +73,14 @@ Then this new *maven* module should be added as dependency to the *application* 
 During the start-up **Thingsboard** parses *classes* inside classpath, finds annotated with custom *Thingsboard Plugin and Action Annotations* and adds new extension to the platform.
 
 Once it's done you are able to use your custom extension as any other extension in the system.
+
+#### Step 4. Design and add configuration schema
+
+#### Step 5. Implement corresponding interface
+
+#### Step 6. Deploy and verify
+
+
 
 #### API
 
