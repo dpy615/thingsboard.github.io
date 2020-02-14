@@ -61,6 +61,9 @@ toc:
   - title: Bulk Provisioning
     new: true
     path: /docs/user-guide/bulk-provisioning/
+  - title: Self-Provisioning of Devices
+    path: /docs/user-guide/provision-devices/
+    new: true
   - title: File Storage
     path: /docs/user-guide/file-storage/
     pe: true
